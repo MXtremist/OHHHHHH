@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "device.h": "c",
+        "x86.h": "c",
+        "lib.h": "c",
+        "types.h": "c",
+        "fs.h": "c",
+        "memory.h": "c"
+    }
+}
