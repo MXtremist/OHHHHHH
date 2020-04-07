@@ -73,23 +73,30 @@ void initFS()
 int loadElf(const char *filename, uint32_t physAddr, uint32_t *entry)
 {
 	// TODO in lab3
-	uint32_t elf = physAddr; // physical memory addr to load
 	Inode inode;
 	int inodeOffset = 0;
 	int i = 0;
+	if (readInode(&sBlock, &inode, &inodeOffset, filename) == -1)
+		return -1;
+	/* find a place to load elf */
+	for (i = 0; i < MAX_PCB_NUM; i++)
+	{
+		if (pcb[i].state == STATE_DEAD)
+			break;
+	}
+	uint32_t elf = (i + 1) * 0x100000;
 
-	readInode(&sBlock, &inode, &inodeOffset, filename);
-
-	//uint8_t buffer[sBlock.blockSize];
 	/*read elf */
 	for (i = 0; i < inode.blockCount; i++)
 	{
-		readBlock(&sBlock, &inode, i, (uint8_t *)(elf + i * sBlock.blockSize));
+		if (readBlock(&sBlock, &inode, i, (uint8_t *)(elf + i * sBlock.blockSize)) == -1)
+			return -1;
 	}
 	*entry = ((struct ELFHeader *)elf)->entry;
+	//*entry = physAddr;
 	/*get first ProgramHeader */
 	int phoff = ((struct ELFHeader *)elf)->phoff;
-
+	putInt(phoff);
 	struct ProgramHeader *ph = (struct ProgramHeader *)(elf + phoff);
 	struct ProgramHeader *eph = ph + ((struct ELFHeader *)elf)->phnum;
 	for (; ph < eph; ph++)
@@ -97,12 +104,26 @@ int loadElf(const char *filename, uint32_t physAddr, uint32_t *entry)
 		if (ph->type == 0x1) //LOAD
 		{
 			/*load */
+			/* 
+			putString("off: ");
+			putInt(ph->off);
+			putString("vaddr: ");
+			putInt(ph->vaddr);
+			putString("filesz: ");
+			putInt(ph->filesz);
+			putString("memsz: ");
+			putInt(ph->memsz);
+			putString("align: ");
+			putInt(ph->align);
+			putChar('\n');
+			*/
 			for (i = 0; i < ph->filesz; i++)
 			{
 				*(uint8_t *)(physAddr + ph->vaddr + i) = *(uint8_t *)(elf + i + ph->off);
+				//putChar(*(char *)(physAddr + ph->vaddr + i));
 			}
 			/*set zero */
-			for (i = ph->filesz; i < ph->memsz; i++)
+			for (; i < ph->memsz; i++)
 			{
 				*(uint8_t *)(physAddr + ph->vaddr + i) = 0;
 			}

@@ -24,6 +24,7 @@ int uEntry(void) {
 		}
 		//printf("exec\n");
 		exec("/usr/print\0", 0);
+		//printf("down\n");
 		exit();
 	}
 	while(1);

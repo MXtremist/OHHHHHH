@@ -272,7 +272,7 @@ int exec(const char *filename, char *const argv[])
 	int i = 0;
 	while (filename[i] != '\0')
 		i++;
-	return syscall(SYS_EXEC, (uint32_t)(filename), (uint32_t)i, 0, 0, 0); //haven't supposed argv[] yet
+	return (syscall(SYS_EXEC, (uint32_t)(filename), (uint32_t)i, 0, 0, 0) == -1);
 }
 
 int sleep(uint32_t time)
