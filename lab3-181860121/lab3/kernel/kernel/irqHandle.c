@@ -84,6 +84,39 @@ void syscallHandle(struct TrapFrame *tf)
 	}
 }
 
+void ChangeProcess()
+{
+	/* time all used, or dead, or blocked*/
+	int i = (current + 1) % MAX_PCB_NUM;
+	for (; i != current; i = (i + 1) % MAX_PCB_NUM)
+	{
+		if (i == 0) //IDLE
+			continue;
+		if (pcb[i].state == STATE_RUNNABLE)
+		{
+			break;
+		}
+	}
+	if (i == current && (pcb[i].state == STATE_BLOCKED || pcb[i].state == STATE_DEAD)) //No Runnable Program, goto IDLE
+		i = 0;
+	current = i;
+	//putChar('0' + current);
+	pcb[current].state = STATE_RUNNING;
+	pcb[current].timeCount = 0;
+	/*change stacktop */
+	uint32_t tmpStackTop = pcb[current].stackTop;
+	pcb[current].stackTop = pcb[current].prevStackTop;
+	tss.esp0 = (uint32_t) & (pcb[current].stackTop);
+	asm volatile("movl %0, %%esp" ::"m"(tmpStackTop)); // switch kernel stack
+	asm volatile("popl %gs");
+	asm volatile("popl %fs");
+	asm volatile("popl %es");
+	asm volatile("popl %ds");
+	asm volatile("popal");
+	asm volatile("addl $8, %esp");
+	asm volatile("iret");
+}
+
 void timerHandle(struct TrapFrame *tf)
 {
 	// TODO in lab3
@@ -103,41 +136,14 @@ void timerHandle(struct TrapFrame *tf)
 		pcb[current].timeCount++;
 		if (pcb[current].timeCount == MAX_TIME_COUNT)
 		{
-			/*XXX time all used, maybe need to change state? */
+			/* time all used, maybe need to change state? */
 			pcb[current].state = STATE_RUNNABLE;
+			ChangeProcess();
 		}
 	}
 	else
 	{
-		/* time all used, or dead, or blocked*/
-		int i = (current + 1) % MAX_PCB_NUM;
-		for (; i != current; i = (i + 1) % MAX_PCB_NUM)
-		{
-			if (i == 0) //IDLE
-				continue;
-			if (pcb[i].state == STATE_RUNNABLE)
-			{
-				break;
-			}
-		}
-		if (i == current) //No Runnable Program, goto IDLE
-			i = 0;
-		current = i;
-		//putChar('0' + current);
-		pcb[current].state = STATE_RUNNING;
-		pcb[current].timeCount = 0;
-		/*change stacktop */
-		uint32_t tmpStackTop = pcb[current].stackTop;
-		pcb[current].stackTop = pcb[current].prevStackTop;
-		tss.esp0 = (uint32_t) & (pcb[current].stackTop);
-		asm volatile("movl %0, %%esp" ::"m"(tmpStackTop)); // switch kernel stack
-		asm volatile("popl %gs");
-		asm volatile("popl %fs");
-		asm volatile("popl %es");
-		asm volatile("popl %ds");
-		asm volatile("popal");
-		asm volatile("addl $8, %esp");
-		asm volatile("iret");
+		ChangeProcess();
 	}
 	return;
 }
@@ -219,28 +225,30 @@ void syscallFork(struct TrapFrame *tf)
 {
 	// TODO in lab3
 	//find a dead pdb
-	int i = 0;
-	for (; i < MAX_PCB_NUM; i++)
+	int i = (current + 1) % MAX_PCB_NUM;
+	for (; i != current; i = (i + 1) % MAX_PCB_NUM)
 	{
 		if (pcb[i].state == STATE_DEAD)
 		{
 			break;
 		}
 	}
-	if (i == MAX_PCB_NUM) //failed
+	if (i == current) //failed
 	{
 		pcb[current].regs.eax = -1;
-		//putChar('F');
-		//putChar('a');
+		//putChar('1');
 	}
 	else
 	{
 		/*copy the whole memory */
+		enableInterrupt();
 		for (int j = 0; j < 0x100000; j++)
 		{
 			*(uint8_t *)(j + (i + 1) * 0x100000) = *(uint8_t *)(j + (current + 1) * 0x100000);
+			asm volatile("int $0x20");
 		}
-		//putChar('0' + i);
+		disableInterrupt();
+		//putChar('0' + i);s
 		pcb[i].stackTop = (uint32_t) & (pcb[i].regs);
 		pcb[i].prevStackTop = (uint32_t) & (pcb[i].stackTop);
 		/*set something, including seg regs */
@@ -249,6 +257,7 @@ void syscallFork(struct TrapFrame *tf)
 		pcb[i].sleepTime = pcb[current].sleepTime;
 		pcb[i].pid = i;
 		/*same reg */
+		pcb[i].regs.eip = pcb[current].regs.eip;
 		pcb[i].regs.eax = pcb[current].regs.eax;
 		pcb[i].regs.ecx = pcb[current].regs.ecx;
 		pcb[i].regs.edx = pcb[current].regs.edx;
@@ -259,14 +268,14 @@ void syscallFork(struct TrapFrame *tf)
 		pcb[i].regs.edi = pcb[current].regs.edi;
 		pcb[i].regs.esp = pcb[current].regs.esp;
 		pcb[i].regs.eflags = pcb[current].regs.eflags;
-		pcb[i].regs.eip = pcb[current].regs.eip;
-		/*not same */
+
+		pcb[i].regs.es = pcb[current].regs.es;
+		pcb[i].regs.fs = pcb[current].regs.fs;
+		pcb[i].regs.gs = pcb[current].regs.gs;
+		/*not same regs*/
 		pcb[i].regs.cs = USEL(1 + i * 2);
 		pcb[i].regs.ss = USEL(2 + i * 2);
 		pcb[i].regs.ds = USEL(2 + i * 2);
-		pcb[i].regs.es = USEL(2 + i * 2);
-		pcb[i].regs.fs = USEL(2 + i * 2);
-		pcb[i].regs.gs = USEL(2 + i * 2);
 
 		/*set return val */
 		pcb[current].regs.eax = i;
@@ -284,7 +293,7 @@ void syscallExec(struct TrapFrame *tf)
 	char *str = (char *)tf->ecx;
 	int size = tf->edx;
 	int i = 0;
-	char tmp[256];
+	char tmp[256]; //filename no more than 256 bits
 	char character = 0;
 	asm volatile("movw %0, %%es" ::"m"(sel));
 	for (i = 0; i < size; i++)
@@ -312,7 +321,6 @@ void syscallExec(struct TrapFrame *tf)
 	else
 	{
 		/* set eip */
-		putString("Hello\n");
 		pcb[current].regs.eip = entry;
 	}
 

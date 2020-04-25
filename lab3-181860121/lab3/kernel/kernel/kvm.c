@@ -75,16 +75,12 @@ int loadElf(const char *filename, uint32_t physAddr, uint32_t *entry)
 	// TODO in lab3
 	Inode inode;
 	int inodeOffset = 0;
+	char tmp[0x100000];
 	int i = 0;
 	if (readInode(&sBlock, &inode, &inodeOffset, filename) == -1)
 		return -1;
 	/* find a place to load elf */
-	for (i = 0; i < MAX_PCB_NUM; i++)
-	{
-		if (pcb[i].state == STATE_DEAD)
-			break;
-	}
-	uint32_t elf = (i + 1) * 0x100000;
+	uint32_t elf = (uint32_t)&tmp[0];
 
 	/*read elf */
 	for (i = 0; i < inode.blockCount; i++)
@@ -96,7 +92,7 @@ int loadElf(const char *filename, uint32_t physAddr, uint32_t *entry)
 	//*entry = physAddr;
 	/*get first ProgramHeader */
 	int phoff = ((struct ELFHeader *)elf)->phoff;
-	putInt(phoff);
+	//putInt(phoff);
 	struct ProgramHeader *ph = (struct ProgramHeader *)(elf + phoff);
 	struct ProgramHeader *eph = ph + ((struct ELFHeader *)elf)->phnum;
 	for (; ph < eph; ph++)
