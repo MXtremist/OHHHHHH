@@ -10,15 +10,15 @@ void Philosopher(int id)
 		printf("Philosopher %d: think\n", id);
 		sleep(getrand(128));
 		sem_wait(&mcount);
-		sem_wait(&forks[id - 1]);
-		sem_wait(&forks[id % 5]);
+		sem_wait(&forks[id - 1]);	//left
+		sem_wait(&forks[id % 5]);	//right
 		printf("Philosopher %d: eat\n", id);
 		cnt++;
 		if (cnt >= MAX)
 			break;
 		sleep(getrand(128));
-		sem_post(&forks[id % 5]);
-		sem_post(&forks[id - 1]);
+		sem_post(&forks[id % 5]);	//right
+		sem_post(&forks[id - 1]);	//left
 		sem_post(&mcount);
 	}
 }

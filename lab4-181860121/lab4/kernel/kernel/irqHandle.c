@@ -314,6 +314,7 @@ void syscallWriteShMem(struct TrapFrame *tf)
 		{
 			//shmem overflow
 			putString("syscallWriteShMem:ShMem overflow!");
+			i = -1;
 			break;
 		}
 	}
@@ -383,7 +384,7 @@ void syscallReadStdIn(struct TrapFrame *tf)
 		i++;
 		putChar(character);
 		//putInt(i);
-		if (i == size)
+		if (i == size - 1)
 		{
 			//buffer overflow
 			putString("syscallReadStdIn:Input overflow!");
@@ -415,6 +416,7 @@ void syscallReadShMem(struct TrapFrame *tf)
 		{
 			//shmem overflow
 			putString("syscallReadShMem:ShMem overflow!");
+			i = -1;
 			break;
 		}
 	}

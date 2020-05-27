@@ -12,12 +12,10 @@ void Reader(int id)
 		sleep(getrand(64));
 		sem_post(&RW_mutex);
 		sem_wait(&Rcount_mutex);
-		//sleep(getrand(128));
 		read(SH_MEM, (uint8_t *)&Rcount, 4, 0);
 		Rcount++;
-		//printf("++, %d Rcount\n", Rcount);
 		write(SH_MEM, (uint8_t *)&Rcount, 4, 0);
-		if (Rcount == 1)
+		if (Rcount == 1) //first
 		{
 			sem_wait(&write_mutex);
 		}
@@ -27,10 +25,8 @@ void Reader(int id)
 		sem_wait(&Rcount_mutex);
 		read(SH_MEM, (uint8_t *)&Rcount, 4, 0);
 		Rcount--;
-		//printf("--, %d Rcount\n", Rcount);
 		write(SH_MEM, (uint8_t *)&Rcount, 4, 0);
-		//sleep(getrand(128));
-		if (Rcount == 0)
+		if (Rcount == 0) //last
 		{
 			sem_post(&write_mutex);
 		}

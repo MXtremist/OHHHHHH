@@ -11,14 +11,14 @@ void consumer()
 	int rand;
 	while (1)
 	{
-		sem_wait(&product_surplus);
+		sem_wait(&product_surplus);	//wait until have product to consume
 		sem_wait(&mutex);
 		step_control++;
 		if (step_control >= MAX_STEP)
 			break;
 		rand = (getrand(64));
 		sem_post(&mutex);
-		sem_post(&house_surplus);
+		sem_post(&house_surplus);	//consumed, house++
 		sleep(rand);
 		printf("Consumer: consume\n");
 	}
@@ -32,14 +32,14 @@ void producer(int id)
 	{
 		printf("Producer %d: produce\n", id);
 		sleep(rand);
-		sem_wait(&house_surplus);
+		sem_wait(&house_surplus);	//wait until have place to store
 		sem_wait(&mutex);
 		step_control++;
 		if (step_control >= MAX_STEP)
 			break;
 		rand = (getrand(96) + 64);
 		sem_post(&mutex);
-		sem_post(&product_surplus);
+		sem_post(&product_surplus);	//produced, product--
 	}
 }
 
@@ -63,7 +63,6 @@ int main(void)
 			{
 				producer(i);
 			}
-
 			break;
 		}
 	}
