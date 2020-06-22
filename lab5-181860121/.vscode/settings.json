@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "device.h": "c",
+        "keyboard.h": "c",
+        "x86.h": "c",
+        "memory.h": "c",
+        "type_traits": "c",
+        "lib.h": "c",
+        "types.h": "c"
+    }
+}

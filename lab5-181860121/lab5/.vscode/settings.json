@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "func.h": "c",
+        "device.h": "c",
+        "x86.h": "c",
+        "fs.h": "c",
+        "minix.h": "c",
+        "types.h": "c"
+    }
+}
